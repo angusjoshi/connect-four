@@ -1,5 +1,5 @@
-#Connect Four
-###A CLI connect four game written in rust
+# Connect Four
+### A CLI connect four game written in rust
 
 Usage: clone the repo then run:
 ```
