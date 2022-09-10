@@ -1,1 +1,1 @@
-/home/angus/rust_projects/hello_world/target/debug/hello_world: /home/angus/rust_projects/hello_world/src/main.rs
+/home/angus/rust_projects/connect_four/target/debug/hello_world: /home/angus/rust_projects/connect_four/src/main.rs
