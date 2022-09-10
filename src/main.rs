@@ -1,10 +1,17 @@
 use std::fmt;
 use std::io;
-use rand::Rng;
 #[derive(Clone)]
 enum Space {
     Full(Color),
     Empty,
+}
+impl Space {
+    fn is_empty(&self) -> bool {
+        match self {
+            Space::Empty => true,
+            Space::Full(_) => false,
+        }
+    }
 }
 impl fmt::Display for Space {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -33,18 +40,18 @@ trait Printable {
 
 impl Rectangular for Board {
     fn new (width: u8, height: u8) -> Board {
-        let mut empty_row = vec![Space::Empty; width as usize];
+        let empty_row = vec![Space::Empty; width as usize];
         let mut spaces = vec![];
-        for i in 0..height {
+        for _ in 0..height {
             spaces.push(empty_row.clone());
         }
-        let mut board = Board { spaces, width, height };
+        let board = Board { spaces, width, height };
         board
     }
 }
 impl Printable for Board {
     fn print(&self) -> () {
-        for row in &self.spaces {
+        for row in self.spaces.iter().rev() {
             for space in row {
                 print!("{} ", space);
             }
@@ -53,10 +60,28 @@ impl Printable for Board {
     }
 }
 impl Board {
-    
-    fn top_left(&self) -> &Space {
-        &self.spaces[0][0]
+    fn make_move(&mut self, move_choice: u8, white_trn: bool) -> Result<bool, &str> {
+        let height = self.stck_height(move_choice);
+        if height == self.height - 1 {
+            return Err("That column is full!");
+        }
+        self.spaces[(height) as usize][(move_choice - 1) as usize] = match white_trn {
+            true => Space::Full(Color::White),
+            false => Space::Full(Color::Black),
+        };
+        
+        //check if its a winner
+        Ok(false)
     }
+    fn stck_height(&self, move_choice: u8) -> u8 {
+        let mut i = 0;
+        while !self.spaces[i][(move_choice - 1) as usize].is_empty()  && 
+            i < (self.height - 1) as usize {
+            i += 1;
+        }
+        i.try_into().unwrap()
+    }
+
 }
 struct Board {
    spaces: Vec<Vec<Space>>,
@@ -65,25 +90,21 @@ struct Board {
 }
 struct Game {
     board : Board,
-    whiteTrn : bool,
-    trnCnt : u8,
+    white_trn : bool,
+    trn_cnt : u8,
 }
 impl Game {
     fn new() -> Game {
-        let mut board = Board::new(8, 8);
-        let mut whiteTrn = true;
-        let mut trnCnt = 0;
-        Game { board, whiteTrn, trnCnt }
+        Game { board: Board::new(8, 8), white_trn: true, trn_cnt: 0 }
     }
     fn get_move(&self) -> u8 {
         let width = self.board.width;
-        let mut move_choice = 0;
         loop {
             println!("Enter a move! (integer between 1 and {})", width);
             let mut s = String::new();
             io::stdin().read_line(&mut s)
                 .expect("read failed!");
-            move_choice = match s.trim().parse() {
+            let move_choice = match s.trim().parse() {
                 Ok(x) => match x {
                     1..=8 => x,
                     _ => {
@@ -98,15 +119,26 @@ impl Game {
                 },
             };
             if move_choice != 0 {
-                break;
+                return move_choice;
             }
         }
-        move_choice
+    }
+    fn do_turn(&mut self) -> () {
+        let move_choice = self.get_move();
+        match self.board.make_move(move_choice, self.white_trn) {
+            Ok(_) => (),
+            Err(s) => println!("{}", s),
+        };
+        self.white_trn = !self.white_trn;
+        self.trn_cnt += 1;
     }
 }
 fn main() {
     let mut game = Game::new();
-    let x = game.get_move(); 
-    println!("choice was {}", x);
+    game.board.print();
+    loop {
+        game.do_turn();
+        game.board.print();
+    }
 }
 
