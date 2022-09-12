@@ -12,6 +12,13 @@ impl Space {
             Space::Full(_) => false,
         }
     }
+    fn is_same(&self, white_trn: bool) -> bool {
+        match self {
+            Space::Full(Color::White) => white_trn,
+            Space::Full(Color::Black) => !white_trn,
+            _ => false,
+        }
+    }
 }
 impl fmt::Display for Space {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -62,7 +69,8 @@ impl Printable for Board {
 impl Board {
     fn make_move(&mut self, move_choice: u8, white_trn: bool) -> Result<bool, &str> {
         let height = self.stck_height(move_choice);
-        if height == self.height - 1 {
+        println!("{}\t{}", self.height, height);
+        if height >= self.height {
             return Err("That column is full!");
         }
         self.spaces[(height) as usize][(move_choice - 1) as usize] = match white_trn {
@@ -71,17 +79,51 @@ impl Board {
         };
         
         //check if its a winner
-        Ok(false)
+        Ok(self.was_winner(move_choice - 1, height, white_trn))
     }
     fn stck_height(&self, move_choice: u8) -> u8 {
         let mut i = 0;
-        while !self.spaces[i][(move_choice - 1) as usize].is_empty()  && 
-            i < (self.height - 1) as usize {
+        while i < (self.height) as usize && !self.spaces[i][(move_choice - 1) as usize].is_empty() {
             i += 1;
         }
         i.try_into().unwrap()
     }
+    fn was_winner(&self, move_choice: u8, height: u8, white_trn: bool) -> bool {
+        let offsets: Vec<(usize, usize)> = vec![(0,1), (1,0), (1, 1)];
+        for (x_offset, y_offset) in &offsets {
+            let mut i: usize = height as usize;
+            let mut j: usize = move_choice as usize;
+            let mut connected = 0;
 
+            //try adding current offset until we reach edge or different piece/empty
+            while i < (self.height as usize) && j < (self.width as usize) 
+                && self.spaces[i][j].is_same(white_trn) {
+                connected += 1;
+                i += y_offset;
+                j += x_offset;
+            }
+
+            //try subtracting offset until end of string of pieces
+            //need to be careful not to underflow our unsigned indexes
+            if *y_offset <= (height as usize) && *x_offset <= (move_choice as usize) {
+                i = (height as usize) - y_offset;
+                j = (move_choice as usize) - x_offset;
+                while self.spaces[i][j].is_same(white_trn) {
+                    connected += 1;
+                if *y_offset > (i as usize) || *x_offset > (j as usize) {
+                    break;
+                }
+                    i -= y_offset;
+                    j -= x_offset;
+                }
+                
+            }
+            if connected >= 4 {
+                    return true;
+            }
+        }
+        return false;
+    }
 }
 struct Board {
    spaces: Vec<Vec<Space>>,
@@ -126,7 +168,8 @@ impl Game {
     fn do_turn(&mut self) -> () {
         let move_choice = self.get_move();
         match self.board.make_move(move_choice, self.white_trn) {
-            Ok(_) => (),
+            Ok(true) => println!("win!"),
+            Ok(false) => println!("not win :("),
             Err(s) => println!("{}", s),
         };
         self.white_trn = !self.white_trn;
