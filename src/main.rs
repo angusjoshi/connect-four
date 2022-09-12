@@ -29,7 +29,7 @@ impl fmt::Display for Space {
                     Color::White => write!(f, "w"),
                 }
             }
-            Space::Empty => write!(f, "e"),
+            Space::Empty => write!(f, "_"),
         }
     }
 }
@@ -58,6 +58,7 @@ impl Rectangular for Board {
 }
 impl Printable for Board {
     fn print(&self) -> () {
+        print!("\r");
         for row in self.spaces.iter().rev() {
             for space in row {
                 print!("{} ", space);
@@ -69,7 +70,6 @@ impl Printable for Board {
 impl Board {
     fn make_move(&mut self, move_choice: u8, white_trn: bool) -> Result<bool, &str> {
         let height = self.stck_height(move_choice);
-        println!("{}\t{}", self.height, height);
         if height >= self.height {
             return Err("That column is full!");
         }
@@ -137,7 +137,7 @@ struct Game {
 }
 impl Game {
     fn new() -> Game {
-        Game { board: Board::new(8, 8), white_trn: true, trn_cnt: 0 }
+        Game { board: Board::new(7, 6), white_trn: true, trn_cnt: 0 }
     }
     fn get_move(&self) -> u8 {
         let width = self.board.width;
@@ -148,7 +148,7 @@ impl Game {
                 .expect("read failed!");
             let move_choice = match s.trim().parse() {
                 Ok(x) => match x {
-                    1..=8 => x,
+                    1..=7 => x,
                     _ => {
                         println!("number out of range! must be between 1 and {}", 
                                  self.board.width);
@@ -165,22 +165,37 @@ impl Game {
             }
         }
     }
-    fn do_turn(&mut self) -> () {
+    fn do_turn(&mut self) -> Result<bool, &str>  {
         let move_choice = self.get_move();
         match self.board.make_move(move_choice, self.white_trn) {
-            Ok(true) => println!("win!"),
-            Ok(false) => println!("not win :("),
-            Err(s) => println!("{}", s),
-        };
-        self.white_trn = !self.white_trn;
-        self.trn_cnt += 1;
+            Ok(x) => {
+                self.white_trn = !self.white_trn;
+                self.trn_cnt += 1;
+                Ok(x)
+            },
+            Err(s) => {
+                println!("{}", s);
+                Err("failed to do turn")
+            },
+        }
     }
 }
 fn main() {
     let mut game = Game::new();
     game.board.print();
     loop {
-        game.do_turn();
+        match game.do_turn() {
+            Ok(true) => {
+                game.board.print();
+                let winner = match game.white_trn {
+                    true => "black",
+                    false => "white",
+                };
+                println!("{} wins!", winner);
+                break;
+            }
+            _ => (),
+        }
         game.board.print();
     }
 }
